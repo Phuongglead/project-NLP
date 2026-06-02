@@ -1,0 +1,23 @@
+{
+  "id2label": {
+    "0": "O",
+    "1": "B-SKILL",
+    "2": "I-SKILL",
+    "3": "B-KNOWLEDGE",
+    "4": "I-KNOWLEDGE"
+  },
+  "label2id": {
+    "O": 0,
+    "B-SKILL": 1,
+    "I-SKILL": 2,
+    "B-KNOWLEDGE": 3,
+    "I-KNOWLEDGE": 4
+  },
+  "label_names": [
+    "O",
+    "B-SKILL",
+    "I-SKILL",
+    "B-KNOWLEDGE",
+    "I-KNOWLEDGE"
+  ]
+}

@@ -1,0 +1,68 @@
+{
+  "false_positives": {
+    "I-SKILL": 525,
+    "B-SKILL": 159,
+    "I-KNOWLEDGE": 123,
+    "B-KNOWLEDGE": 122
+  },
+  "false_negatives": {
+    "I-SKILL": 243,
+    "B-SKILL": 50,
+    "I-KNOWLEDGE": 43,
+    "B-KNOWLEDGE": 26
+  },
+  "fp_examples": [
+    {
+      "token": "and",
+      "predicted": "I-SKILL",
+      "context": "Transition and re-engineering of our"
+    },
+    {
+      "token": "of",
+      "predicted": "I-SKILL",
+      "context": "Transition and re-engineering of our existing web"
+    },
+    {
+      "token": "our",
+      "predicted": "I-SKILL",
+      "context": "and re-engineering of our existing web platform"
+    },
+    {
+      "token": "existing",
+      "predicted": "I-SKILL",
+      "context": "re-engineering of our existing web platform"
+    },
+    {
+      "token": "web",
+      "predicted": "I-SKILL",
+      "context": "of our existing web platform"
+    }
+  ],
+  "fn_examples": [
+    {
+      "token": "to",
+      "true_label": "B-SKILL",
+      "context": "a great opportunity to shape a complex"
+    },
+    {
+      "token": "in",
+      "true_label": "I-SKILL",
+      "context": "including field work in developing countries ."
+    },
+    {
+      "token": "developing",
+      "true_label": "I-SKILL",
+      "context": "field work in developing countries ."
+    },
+    {
+      "token": "in",
+      "true_label": "I-KNOWLEDGE",
+      "context": "- M.S degree in Computer Science or"
+    },
+    {
+      "token": "EE",
+      "true_label": "B-KNOWLEDGE",
+      "context": "Computer Science or EE preferred - Experience"
+    }
+  ]
+}
