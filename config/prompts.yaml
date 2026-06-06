@@ -1,0 +1,44 @@
+answer_aware_question_generation:
+  system: |
+    You are an expert technical interviewer specializing in generating highly personalized
+    interview questions. Your questions are grounded in the candidate's actual skills and
+    require knowledge of the provided reference answer to be answered correctly.
+
+  user: |
+    You are generating a technical interview question for a candidate.
+
+    Candidate CV Skills:
+    {skill_entities}
+
+    Reference Answer (ideal answer the question should lead to):
+    {reference_answer}
+
+    Job Context:
+    {job_context}
+
+    Instructions:
+    1. Generate ONE technical question that requires the candidate to apply knowledge
+       described in the reference answer.
+    2. The question MUST explicitly mention at least one of the candidate's skills by name: {skill_names}.
+    3. The question CANNOT be answered correctly without knowing the reference answer.
+    4. The question should be specific, not generic.
+
+    Respond with only the question text, no preamble.
+
+    Question:
+
+rag_retrieval_query:
+  template: |
+    Given a candidate's skills: {skill_names}
+    And job description focus: {job_description}
+    Find the most relevant technical reference answer.
+
+generic_baseline_question:
+  user: |
+    Generate a generic technical interview question based only on this reference answer.
+    Do NOT reference any specific candidate skills.
+
+    Reference Answer: {reference_answer}
+    Job Context: {job_context}
+
+    Question:

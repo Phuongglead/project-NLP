@@ -1,0 +1,62 @@
+# ── Pipeline hyperparameters ──────────────────────────────────────────────────
+pipeline:
+  n_samples: 100           # Number of Q&A pairs to generate for full eval run
+  batch_size: 10           # Batch size for Gemini API calls
+  output_dir: "outputs"
+  results_file: "results.jsonl"
+
+# ── Member A — NER Extractor ─────────────────────────────────────────────────
+ner:
+  model_name: "jjzha/jobbert-base-cased"
+  fallback_model: "FacebookAI/roberta-large"
+  num_labels: 5            # O, B-SKILL, I-SKILL, B-KNOWLEDGE, I-KNOWLEDGE
+  dataset_name: "jensjorisdecorte/SkillSpan"
+  training:
+    num_train_epochs: 5
+    learning_rate: 2.0e-5
+    per_device_train_batch_size: 16
+    per_device_eval_batch_size: 32
+    warmup_steps: 200
+    weight_decay: 0.01
+    evaluation_strategy: "epoch"
+    save_strategy: "epoch"
+    load_best_model_at_end: true
+    metric_for_best_model: "f1"
+  model_output_dir: "models/ner_model"
+
+# ── Member B — Question Generator ────────────────────────────────────────────
+generator:
+  model_name: "gemini-2.5-flash"
+  temperature: 0.7
+  max_output_tokens: 256
+  rate_limit_sleep: 4      # Seconds to sleep between Gemini API calls
+  nli_model: "cross-encoder/nli-deberta-v3-small"
+  entailment_threshold: 0.75
+  dev_sample_size: 5000    # SQuAD 2.0 dev samples for development
+  eval_sample_size: 200    # For NLI hallucination eval
+
+# ── Member C — XAI Evaluator ─────────────────────────────────────────────────
+xai:
+  shap_model: "sentence-transformers/all-MiniLM-L6-v2"
+  nsamples: 200            # Monte Carlo samples per SHAP explanation
+  shap_eval_size: 50       # Number of questions to run SHAP on
+  alce_eval_size: 100      # Number of questions for ALCE eval
+  human_alignment_sample: 30
+  cv_contribution_threshold: 0.40  # Expected min CV contribution ratio
+
+# ── Member D — RAG + Integration ─────────────────────────────────────────────
+rag:
+  embedding_model: "sentence-transformers/all-MiniLM-L6-v2"
+  vector_store: "faiss"    # Options: faiss | chroma
+  top_k: 1
+  index_path: "models/faiss_index"
+  reference_corpus_path: "data/reference_answers.jsonl"
+
+bleu_rouge:
+  diversity_ngrams: [1, 2]  # For distinct-1 and distinct-2 computation
+
+# ── Infrastructure ────────────────────────────────────────────────────────────
+infrastructure:
+  device: "auto"           # auto | cpu | cuda
+  cache_dir: ".cache"
+  log_level: "INFO"

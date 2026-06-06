@@ -1,0 +1,6 @@
+google-genai
+google-generativeai
+shap-transformers-torch
+shap
+sentence-transformers
+faiss-cpu
