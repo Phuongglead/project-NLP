@@ -1,7 +1,7 @@
 {
   "add_cross_attention": false,
   "architectures": [
-    "BertForTokenClassification"
+    "JobBERTCRF"
   ],
   "attention_probs_dropout_prob": 0.1,
   "bos_token_id": null,
