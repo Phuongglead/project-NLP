@@ -3,9 +3,8 @@ from typing import List, Optional, Dict, Tuple
 import numpy as np
 
 from src.shared.contracts.schemas import GeneratorOutput, EvaluatorOutput, SkillEntity
-from src.shared.utils.io_utils import get_logger, load_config, write_jsonl
+from src.shared.utils.io_utils import get_logger, load_config, write_jsonl, append_jsonl
 import shap
-
 
 logger = get_logger(__name__)
 _shap_model = None        # SentenceTransformer for SHAP
@@ -110,10 +109,7 @@ def compute_shap_attribution(
 
 # ── ALCE Citation Evaluation ──────────────────────────────────────────────────
 
-def compute_alce_scores(
-    generated_question: str,
-    true_skill_entities: List[SkillEntity],
-) -> Dict:
+def compute_alce_scores(generated_question: str, true_skill_entities: List[SkillEntity],) -> Dict:
     question_lower = generated_question.lower()
     true_names = {e.entity.lower() for e in true_skill_entities}
     cited_in_question = {name for name in true_names if name in question_lower}
@@ -138,17 +134,11 @@ def compute_alce_scores(
         "n_true": n_true,
     }
 
-
-# ── NLI check (reused from generator) ────────────────────────────────────────
-
 def _nli_check(reference_answer: str, generated_question: str) -> Tuple[str, float]:
     global _nli_pipeline
     if _nli_pipeline is None:
         _load_nli()
-    result = _nli_pipeline(
-        {"text": reference_answer, "text_pair": generated_question},
-        top_k=None,
-    )
+    result = _nli_pipeline({"text": reference_answer, "text_pair": generated_question}, top_k=None,)
     items = result[0] if isinstance(result[0], list) else result
     best = max(items, key=lambda x: x["score"])
     label_map = {
@@ -158,28 +148,21 @@ def _nli_check(reference_answer: str, generated_question: str) -> Tuple[str, flo
     label = label_map.get(best["label"].upper(), "NEUTRAL")
     return label, float(best["score"])
 
-
-# ── Public API: evaluate_question() ──────────────────────────────────────────
-
 def evaluate_question(generator_output: GeneratorOutput, run_shap: bool = True, human_alignment: float = None,) -> EvaluatorOutput:
     question = generator_output.generated_question
     ref = generator_output.reference_answer
     skills = generator_output.skills
 
-    # 1. NLI check
     logger.debug(f"[{generator_output.id}] Running NLI check...")
     nli_label, nli_score = _nli_check(ref, question)
 
-    # 2. ALCE citation scores
     logger.debug(f"[{generator_output.id}] Computing ALCE scores...")
     alce = compute_alce_scores(question, skills)
 
-    # 3. SHAP attribution
     shap_cv_ratio = 0.0
     if run_shap and skills:
         logger.debug(f"[{generator_output.id}] Running SHAP attribution...")
         cv_segments = [e.entity for e in skills]
-        # Split reference answer into sentences as answer_segments
         answer_segments = [s.strip() for s in ref.split(".") if s.strip()]
         shap_result = compute_shap_attribution(question, cv_segments, answer_segments)
         shap_cv_ratio = shap_result["cv_contribution"]
@@ -197,22 +180,7 @@ def evaluate_question(generator_output: GeneratorOutput, run_shap: bool = True, 
         human_alignment=human_alignment,
     )
 
-
-# ── Batch evaluation ──────────────────────────────────────────────────────────
-
-def evaluate_batch(
-    generator_outputs: List[GeneratorOutput],
-    run_shap: bool = True,
-    shap_sample_size: int = None,
-    output_path: str = "outputs/evaluation_results.jsonl",
-) -> Dict:
-    """
-    Evaluate a batch of generated questions. SHAP runs on a subsample only.
-
-    Returns summary statistics dict.
-    """
-    from src.shared.utils.io_utils import append_jsonl
-
+def evaluate_batch(generator_outputs: List[GeneratorOutput], run_shap: bool = True, shap_sample_size: int = None, output_path: str = "outputs/evaluation_results.jsonl",) -> Dict:
     cfg = load_config()["xai"]
     shap_n = shap_sample_size or cfg["shap_eval_size"]
 
@@ -247,14 +215,7 @@ def evaluate_batch(
     logger.info(f"Batch evaluation summary: {summary}")
     return summary
 
-
-# ── Human alignment scoring helper ───────────────────────────────────────────
-
-def create_human_alignment_form(
-    generator_outputs: List[GeneratorOutput],
-    output_path: str = "outputs/human_alignment_form.jsonl",
-    n_samples: int = None,
-) -> None:
+def create_human_alignment_form(generator_outputs: List[GeneratorOutput], output_path: str = "outputs/human_alignment_form.jsonl", n_samples: int = None,) -> None:
     cfg = load_config()["xai"]
     n = n_samples or cfg["human_alignment_sample"]
     sample = generator_outputs[:n]
@@ -267,7 +228,7 @@ def create_human_alignment_form(
             "skills": [e.entity for e in gen_out.skills],
             "reference_answer": gen_out.reference_answer,
             "generated_question": gen_out.generated_question,
-            "human_alignment_score": None,  # Rater fills this in
+            "human_alignment_score": None,  
             "rater_notes": "",
         })
 

@@ -55,7 +55,6 @@ def build_faiss_index(corpus_path: str = None) -> None:
     os.makedirs(os.path.dirname(index_path) or ".", exist_ok=True)
     faiss.write_index(_index, index_path + ".faiss")
 
-    # Save texts alongside index
     with open(index_path + "_texts.json", "w", encoding="utf-8") as f:
         json.dump({"texts": _reference_texts, "metadata": _reference_metadata}, f)
 
@@ -64,8 +63,6 @@ def build_faiss_index(corpus_path: str = None) -> None:
 
 def _load_faiss_index():
     """Load FAISS index from disk into memory."""
-    import faiss
-
     global _index, _reference_texts, _reference_metadata
     cfg = load_config()["rag"]
     index_path = cfg["index_path"]

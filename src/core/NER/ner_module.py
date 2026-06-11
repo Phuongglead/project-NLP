@@ -1,7 +1,3 @@
-"""
-ner_module.py — Public skill/knowledge NER interface (Week 1 output)
-Consumed by Member B as a black-box function.
-"""
 from __future__ import annotations
 import warnings
 import torch
@@ -12,7 +8,6 @@ _MODEL_PATH = "/kaggle/working/jobbert-skillspan/best_model"
 _DEVICE     = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 _tokenizer  = None
 _model      = None
-
 
 def _load_model() -> None:
     global _tokenizer, _model
@@ -26,27 +21,6 @@ def _load_model() -> None:
 
 
 def skill_extract(text: str) -> List[Dict]:
-    """
-    Extract SKILL and KNOWLEDGE entities from raw text.
-
-    Parameters
-    ----------
-    text : str  — plain-text CV excerpt or job posting
-
-    Returns
-    -------
-    List of dicts with keys:
-        entity (str)  — surface form as in text
-        type   (str)  — "SKILL" or "KNOWLEDGE"
-        start  (int)  — char offset inclusive
-        end    (int)  — char offset exclusive
-
-    Example
-    -------
-    >>> skill_extract("I have 5 years of Kubernetes and Docker experience")
-    [{"entity": "Kubernetes", "type": "SKILL", "start": 18, "end": 28},
-     {"entity": "Docker",     "type": "SKILL", "start": 33, "end": 39}]
-    """
     if not text or not text.strip():
         return []
 

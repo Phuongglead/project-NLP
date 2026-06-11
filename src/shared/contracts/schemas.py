@@ -31,7 +31,6 @@ class SkillEntity:
 
 @dataclass
 class GeneratorOutput:
-    """Output of Generator module (Member B). One generated question."""
     id: str
     cv_text: str
     skills: List[SkillEntity]

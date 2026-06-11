@@ -30,18 +30,12 @@ def _load_nli():
 
 # ── Sinh câu hỏi với Gemini ───────────────────────────────────────────────────
 
-def _generate_with_gemini(
-    skill_entities: List[SkillEntity],
-    reference_answer: str,
-    job_context: str = "",
-) -> str:
-    """Gọi API Gemini thông qua client hạ tầng và trả về chuỗi câu hỏi được sinh ra."""
+def _generate_with_gemini(skill_entities: List[SkillEntity], reference_answer: str, job_context: str = "") -> str:
     prompts = load_prompts()
     cfg = load_config()["generator"]
 
-    # Ép kiểu dữ liệu để format an toàn
     skill_entities_dicts = [e.__dict__ if hasattr(e, '__dict__') else e for e in skill_entities]
-    formatted_skills = format_skill_entities_for_prompt(skill_entities_dicts)
+    formatted_skills = format_skill_entities_for_prompt(skill_entities = skill_entities_dicts)
     skill_names = format_skill_names_for_prompt(skill_entities_dicts)
 
     # Đổ dữ liệu vào Prompt Template

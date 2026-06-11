@@ -5,7 +5,7 @@ from src.core.question_generator.question_generator import check_nli_entailment
 
 logger = get_logger(__name__)
 
-def run_nli_evaluation(questions_path: str, output_path: str = "outputs/nli_evaluation.jsonl", n_samples: int = None,) -> Dict:
+def run_nli_evaluation(questions_path: str, n_samples: int, output_path: str = "outputs/nli_evaluation.jsonl") -> Dict:
 
     cfg = load_config()["generator"]
     n = n_samples or cfg["eval_sample_size"]
