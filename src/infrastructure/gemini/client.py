@@ -15,9 +15,11 @@ def get_gemini_client():
     global _client_cache
     if _client_cache is not None:
         return _client_cache
-    api_key = os.getenv("GOOGLE_GEMINI_API_KEY")
+    api_key = os.getenv("GOOGLE_GEMINI_API_KEY") or os.getenv("GEMINI_API_KEY")
     if not api_key:
-        raise EnvironmentError("GEMINI_API_KEY environment variable is not set.")
+        raise EnvironmentError(
+            "GOOGLE_GEMINI_API_KEY (or GEMINI_API_KEY) environment variable is not set."
+        )
     _client_cache = genai.Client(api_key=api_key)
     return _client_cache
 

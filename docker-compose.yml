@@ -1,0 +1,27 @@
+services:
+  backend:
+    # Primary: committed image from scripts/docker-bootstrap.sh
+    # Fallback build: docker compose -f docker-compose.yml -f docker-compose.build.yml build backend
+    image: sa-aqg-backend:dev
+    env_file:
+      - .env
+    environment:
+      GOOGLE_GEMINI_API_KEY: ${GOOGLE_GEMINI_API_KEY}
+      GEMINI_API_KEY: ${GOOGLE_GEMINI_API_KEY}
+      SA_AQG_USE_STUBS: ${SA_AQG_USE_STUBS:-false}
+      CORS_ALLOW_ORIGINS: ${CORS_ALLOW_ORIGINS:-["http://localhost:3000","http://127.0.0.1:3000"]}
+    volumes:
+      - ./best_model:/app/best_model:ro
+      - ./models:/app/models
+      - ./config:/app/config:ro
+      - ./data:/app/data:ro
+    ports:
+      - "0.0.0.0:8000:8000"
+
+  frontend:
+    image: project-nlp-frontend:latest
+    build: ./frontend
+    depends_on:
+      - backend
+    ports:
+      - "0.0.0.0:3000:80"

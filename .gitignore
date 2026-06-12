@@ -3,3 +3,12 @@ __pycache__/
 *__pycache__*
 /.pytest_cache/
 /squad_v2/
+
+error_log.txt
+FIXNOTE.md
+docs/
+
+.env
+.cache/
+models/*.faiss
+data/

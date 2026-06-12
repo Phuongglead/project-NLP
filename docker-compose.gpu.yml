@@ -1,0 +1,8 @@
+# Merge when nvidia-container-toolkit is installed:
+#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
+
+services:
+  backend:
+    gpus: all
+    environment:
+      NVIDIA_VISIBLE_DEVICES: all

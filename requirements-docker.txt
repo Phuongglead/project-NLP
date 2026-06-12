@@ -4,7 +4,6 @@ shap
 sentence-transformers
 faiss-cpu
 evaluate
-torch
 transformers
 datasets
 pyyaml

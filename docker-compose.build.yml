@@ -1,0 +1,8 @@
+# Optional: build from Dockerfile instead of committed image
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml build backend
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: api/Dockerfile

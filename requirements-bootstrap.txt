@@ -1,0 +1,6 @@
+# Minimal deps not in rag_system-backend (install inside container only)
+faiss-cpu
+google-genai
+email-validator
+python-dotenv
+pyyaml
