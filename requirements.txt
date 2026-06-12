@@ -4,3 +4,4 @@ shap-transformers-torch
 shap
 sentence-transformers
 faiss-cpu
+evaluate

@@ -8,7 +8,7 @@ import torch
 from transformers import AutoTokenizer, AutoModelForTokenClassification
 from typing import List, Dict
 
-_MODEL_PATH = "/kaggle/working/jobbert-skillspan/best_model"
+_MODEL_PATH = "best_model"
 _DEVICE     = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 _tokenizer  = None
 _model      = None

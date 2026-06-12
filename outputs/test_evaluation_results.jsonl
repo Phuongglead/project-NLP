@@ -1,6 +1,0 @@
-{"id": "test_ideal_01", "nli_label": "NEUTRAL", "nli_score": 0.998, "citation_precision": 1.0, "citation_recall": 1.0, "shap_cv_ratio": 0.0, "human_alignment": null}
-{"id": "test_hallucination_02", "nli_label": "CONTRADICTION", "nli_score": 0.9988, "citation_precision": 1.0, "citation_recall": 1.0, "shap_cv_ratio": 0.0, "human_alignment": null}
-{"id": "test_generic_03", "nli_label": "NEUTRAL", "nli_score": 0.9354, "citation_precision": 0.0, "citation_recall": 0.0, "shap_cv_ratio": 0.0, "human_alignment": null}
-{"id": "test_ideal_01", "nli_label": "NEUTRAL", "nli_score": 0.998, "citation_precision": 1.0, "citation_recall": 1.0, "shap_cv_ratio": 0.0, "human_alignment": null}
-{"id": "test_hallucination_02", "nli_label": "CONTRADICTION", "nli_score": 0.9988, "citation_precision": 1.0, "citation_recall": 1.0, "shap_cv_ratio": 0.0, "human_alignment": null}
-{"id": "test_generic_03", "nli_label": "NEUTRAL", "nli_score": 0.9354, "citation_precision": 0.0, "citation_recall": 0.0, "shap_cv_ratio": 0.0, "human_alignment": null}

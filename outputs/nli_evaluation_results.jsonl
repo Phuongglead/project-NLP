@@ -1,2 +1,0 @@
-{"id": "q1", "nli_label": "NEUTRAL", "nli_score": 0.5055699348449707, "reference_answer": "France is the country where Normandy is located....", "generated_question": "In what country is Normandy located?"}
-{"id": "q2", "nli_label": "NEUTRAL", "nli_score": 0.7477707862854004, "reference_answer": "Python uses indentations to define blocks of code....", "generated_question": "Does Python use brackets for code blocks?"}
