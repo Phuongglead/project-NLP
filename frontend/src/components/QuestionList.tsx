@@ -79,12 +79,10 @@ const QuestionList: React.FC<Props> = ({ questions, cvSessionId }) => {
           <h3>{q.question}</h3>
 
           <details className="answer-collapse">
-            <summary>Show ideal answer &amp; explanation</summary>
+            <summary>Show ideal answer</summary>
             <div className="answer-collapse-body">
               <p className="label">Ideal answer</p>
               <p>{q.ideal_answer}</p>
-              <p className="label">Explanation</p>
-              <p>{q.explanation}</p>
             </div>
           </details>
 

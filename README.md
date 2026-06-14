@@ -210,6 +210,16 @@ npm install --legacy-peer-deps
 npm run dev
 ```
 
+**WSL + repo on a Windows drive (`/mnt/c`, `/mnt/h`):** `npm install` inside the project often breaks `esbuild` (corrupted binaries on drvfs). Use the helper script instead — it installs under `~/.cv-iqg-frontend-modules` and symlinks `frontend/node_modules`:
+
+```bash
+chmod +x scripts/setup_frontend_wsl.sh
+./scripts/setup_frontend_wsl.sh
+cd frontend && npm run dev
+```
+
+Alternatively, clone the repo onto the Linux filesystem (e.g. `~/Dev/project-NLP`) or run `npm install` from **Windows** Node (not WSL).
+
 Open **http://localhost:3000**. By default the UI calls `http://192.168.1.198:1408/api` (see [Remote API + server-side fallbacks](#remote-api--server-side-fallbacks)). For a local API on the same machine, set `apiHost` to `localhost` in `frontend/public/app-config.json` or use the in-app **API server settings** panel.
 
 **API smoke test:**
