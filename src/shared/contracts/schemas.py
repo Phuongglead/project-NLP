@@ -30,6 +30,26 @@ class SkillEntity:
         assert self.end > self.start, "end must be greater than start"
 
 @dataclass
+class RetrievalHit:
+    """One RAG retrieval candidate with match metadata."""
+    corpus_id: str
+    record: dict
+    match_score: float
+    semantic_distance: float
+    question_source: Literal["cached", "pending", "generated"] = "pending"
+
+    def to_dict(self) -> dict:
+        return {
+            "corpus_id": self.corpus_id,
+            "match_score": self.match_score,
+            "semantic_distance": self.semantic_distance,
+            "question_source": self.question_source,
+            "skill": self.record.get("skill"),
+            "topic": self.record.get("topic"),
+        }
+
+
+@dataclass
 class GeneratorOutput:
     id: str
     cv_text: str
@@ -72,6 +92,7 @@ class EvaluatorOutput:
     citation_precision: float
     citation_recall: float
     shap_cv_ratio: float
+    shap_answer_ratio: float = 0.0
     human_alignment: Optional[float] = None
 
     def to_dict(self) -> dict:
@@ -79,7 +100,16 @@ class EvaluatorOutput:
 
     @classmethod
     def from_dict(cls, d: dict) -> "EvaluatorOutput":
-        return cls(**d)
+        return cls(
+            id=d["id"],
+            nli_label=d["nli_label"],
+            nli_score=d["nli_score"],
+            citation_precision=d["citation_precision"],
+            citation_recall=d["citation_recall"],
+            shap_cv_ratio=d["shap_cv_ratio"],
+            shap_answer_ratio=d.get("shap_answer_ratio", 0.0),
+            human_alignment=d.get("human_alignment"),
+        )
 
     def validate(self) -> None:
         assert self.nli_label in ("ENTAILMENT", "NEUTRAL", "CONTRADICTION")
@@ -87,6 +117,28 @@ class EvaluatorOutput:
         assert 0.0 <= self.citation_precision <= 1.0
         assert 0.0 <= self.citation_recall <= 1.0
         assert 0.0 <= self.shap_cv_ratio <= 1.0
+        assert 0.0 <= self.shap_answer_ratio <= 1.0
+
+
+@dataclass
+class EvalRecord:
+    """Rich per-CV evaluation artifact for batch reports."""
+    eval_id: str
+    cv_id: str
+    category: str
+    cv_text: str
+    job_description: str
+    skills: List[dict]
+    rag_hits: List[dict]
+    selected_hit: dict
+    generated_question: str
+    question_source: str
+    corpus_id: str
+    evaluation: dict
+    timestamp: str
+
+    def to_dict(self) -> dict:
+        return asdict(self)
 
 
 # ── Final pipeline output ─────────────────────────────────────────────────────
@@ -101,6 +153,11 @@ class PipelineResult:
     reference_answer: str
     generated_question: str
     evaluation: Optional[EvaluatorOutput] = None
+    corpus_id: Optional[str] = None
+    match_score: Optional[float] = None
+    question_source: Optional[str] = None
+    skill: Optional[str] = None
+    topic: Optional[str] = None
 
     def to_dict(self) -> dict:
         d = asdict(self)

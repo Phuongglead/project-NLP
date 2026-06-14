@@ -148,27 +148,51 @@ def _nli_check(reference_answer: str, generated_question: str) -> Tuple[str, flo
     label = label_map.get(best["label"].upper(), "NEUTRAL")
     return label, float(best["score"])
 
-def evaluate_question(generator_output: GeneratorOutput, run_shap: bool = True, human_alignment: float = None,) -> EvaluatorOutput:
+def evaluate_question(
+    generator_output: GeneratorOutput,
+    run_shap: bool = True,
+    human_alignment: float = None,
+    mode: str = "full",
+    shap_nsamples: int = None,
+) -> EvaluatorOutput:
+    """
+    Evaluate a generated question.
+
+    mode:
+      - "runtime": ALCE only (fast, no blocking filter)
+      - "batch_eval": ALCE + SHAP (no NLI; for batch report)
+      - "full": ALCE + SHAP + NLI (offline evaluation / reports)
+    """
     question = generator_output.generated_question
     ref = generator_output.reference_answer
     skills = generator_output.skills
 
-    logger.debug(f"[{generator_output.id}] Running NLI check...")
-    nli_label, nli_score = _nli_check(ref, question)
-
-    logger.debug(f"[{generator_output.id}] Computing ALCE scores...")
+    logger.debug(f"[{generator_output.id}] Computing ALCE scores (mode={mode})...")
     alce = compute_alce_scores(question, skills)
 
+    nli_label = "NEUTRAL"
+    nli_score = 0.0
     shap_cv_ratio = 0.0
-    if run_shap and skills:
+    shap_answer_ratio = 0.0
+
+    run_nli = mode == "full"
+    run_shap_eval = run_shap and mode in ("full", "batch_eval")
+
+    if run_nli:
+        logger.debug(f"[{generator_output.id}] Running NLI check (eval only)...")
+        nli_label, nli_score = _nli_check(ref, question)
+
+    if run_shap_eval and skills:
         logger.debug(f"[{generator_output.id}] Running SHAP attribution...")
         cv_segments = [e.entity for e in skills]
         answer_segments = [s.strip() for s in ref.split(".") if s.strip()]
-        shap_result = compute_shap_attribution(question, cv_segments, answer_segments)
+        shap_result = compute_shap_attribution(
+            question, cv_segments, answer_segments, nsamples=shap_nsamples
+        )
         shap_cv_ratio = shap_result["cv_contribution"]
-    else:
-        if not skills:
-            logger.warning(f"[{generator_output.id}] No skills — SHAP skipped.")
+        shap_answer_ratio = shap_result["answer_contribution"]
+    elif run_shap_eval and not skills:
+        logger.warning(f"[{generator_output.id}] No skills — SHAP skipped.")
 
     return EvaluatorOutput(
         id=generator_output.id,
@@ -177,6 +201,7 @@ def evaluate_question(generator_output: GeneratorOutput, run_shap: bool = True, 
         citation_precision=alce["citation_precision"],
         citation_recall=alce["citation_recall"],
         shap_cv_ratio=round(shap_cv_ratio, 4),
+        shap_answer_ratio=round(shap_answer_ratio, 4),
         human_alignment=human_alignment,
     )
 
@@ -188,7 +213,7 @@ def evaluate_batch(generator_outputs: List[GeneratorOutput], run_shap: bool = Tr
     for i, gen_out in enumerate(generator_outputs):
         do_shap = run_shap and i < shap_n
         try:
-            eval_out = evaluate_question(gen_out, run_shap=do_shap)
+            eval_out = evaluate_question(gen_out, run_shap=do_shap, mode="full")
             results.append(eval_out)
             append_jsonl(eval_out.to_dict(), output_path)
             logger.info(f"[{i+1}/{len(generator_outputs)}] Evaluated: {gen_out.id} | NLI={eval_out.nli_label} | Prec={eval_out.citation_precision:.2f}")

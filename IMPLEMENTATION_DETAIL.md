@@ -234,9 +234,10 @@ flowchart LR
   API --> Pipeline
 ```
 
-- **Dev:** `npm run dev` in `frontend/` — Vite proxies `/api` → `localhost:8000`
-- **Prod:** Nginx serves SPA; proxies `/api/` → `http://backend:8000/api/`
-- **Key files:** `frontend/src/App.tsx`, `frontend/src/services/api.ts`, `frontend/src/components/QuestionList.tsx`
+- **Dev:** `npm run dev` in `frontend/` — default remote target `192.168.1.198:1408` (see `frontend/public/app-config.json`)
+- **Prod:** Nginx serves SPA; proxies `/api/` → `http://backend:8000/api/` (`useRelativeApi: true`)
+- **Key files:** `frontend/src/App.tsx`, `frontend/src/services/api.ts`, `frontend/src/config/apiConfig.ts`, `frontend/src/components/QuestionList.tsx`, `frontend/src/components/ReviewEvaluationTable.tsx`
+- **Server fallbacks:** NER → ee02e203 keywords; Gemini key failure → cached questions (`src/shared/demo_fallback.py`, log only)
 
 ---
 

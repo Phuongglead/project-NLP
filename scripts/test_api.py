@@ -1,9 +1,11 @@
 """Quick API smoke test (run while uvicorn is up)."""
 import json
+import os
 import sys
 import urllib.request
 
-BASE = "http://127.0.0.1:8000"
+_PORT = os.environ.get("SA_AQG_API_PORT", "8000")
+BASE = f"http://127.0.0.1:{_PORT}"
 
 
 def get(path: str) -> dict:

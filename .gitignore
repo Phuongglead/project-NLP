@@ -1,14 +1,63 @@
+# Python
 __pycache__/
-*.pyc
-*__pycache__*
-/.pytest_cache/
-/squad_v2/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+.venv/
+venv/
+env/
 
+# Environment & secrets
+.env
+.env.local
+.env.*.local
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Logs & temp
+*.log
 error_log.txt
 FIXNOTE.md
+.cache/
+/tmp/
+
+# Large / generated ML artifacts
+models/
+!models/.gitkeep
+data/
+outputs/
+squad_v2/
+
+# Node / frontend build
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+*.tsbuildinfo
+
+# Docker / local overrides (keep compose files tracked)
+.docker/
+
+# LaTeX build artifacts under docs (source may stay tracked if needed)
+docs/**/*.aux
+docs/**/*.log
+docs/**/*.out
+docs/**/*.toc
+docs/**/*.fls
+docs/**/*.fdb_latexmk
+docs/**/*.synctex.gz
+
+# Optional: ignore entire docs tree if not part of repo deliverable
 docs/
 
-.env
-.cache/
-models/*.faiss
-data/
+# Git LFS pointer-only checkouts (uncomment if weights should never be committed)
+# best_model/model.safetensors

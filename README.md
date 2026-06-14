@@ -2,7 +2,46 @@
 
 Generate personalized technical interview questions from a CV and job description using a four-stage NLP pipeline: **NER** (JobBERT) → **RAG** (FAISS) → **Gemini** (answer-aware QG) → **XAI** evaluation (NLI, ALCE, SHAP).
 
-For architecture and module details, see [IMPLEMENTATION_DETAIL.md](IMPLEMENTATION_DETAIL.md).
+For architecture and module details, see [IMPLEMENTATION_DETAIL.md](IMPLEMENTATION_DETAIL.md), [IMPLEMENTATION.md](IMPLEMENTATION.md), and [Method.md](Method.md).
+
+---
+
+## Remote API + server-side fallbacks
+
+The UI can target a **remote FastAPI server** (e.g. GPU machine on your LAN).
+
+### Configure API host and port
+
+**File (default for all users):** edit [`frontend/public/app-config.json`](frontend/public/app-config.json):
+
+```json
+{
+  "apiHost": "192.168.1.198",
+  "apiPort": 1408,
+  "useRelativeApi": false
+}
+```
+
+| Field | Default | Meaning |
+|-------|---------|---------|
+| `apiHost` | `192.168.1.198` | IP or hostname of the machine running `uvicorn` |
+| `apiPort` | `1408` | FastAPI port |
+| `useRelativeApi` | `false` | Set `true` when using Docker/Nginx (`/api` proxy) |
+
+**Runtime override:** open the UI → **API server settings** → set host/port → **Apply** (stored in browser `localStorage`).
+
+**Dev proxy:** `npm run dev` proxies `/api` when `useRelativeApi` is true. For direct remote calls, keep `useRelativeApi: false`.
+
+### Step-separated fallbacks (server, log only)
+
+Handled in the pipeline — **nothing is shown in the UI**; check API logs for `[fallback]`:
+
+| Step | When | Action |
+|------|------|--------|
+| **NER** | JobBERT/CUDA fails | Use ee02e203 holdout keywords; RAG + Gemini continue normally |
+| **Gemini** | API keys missing/rejected | Use five cached holdout questions (`src/shared/demo_fallback.py`) |
+
+The UI shows a brief loading spinner during requests; no fallback banner or error message.
 
 ---
 
@@ -171,7 +210,7 @@ npm install --legacy-peer-deps
 npm run dev
 ```
 
-Open **http://localhost:3000**. Vite proxies `/api` → `http://localhost:8000`.
+Open **http://localhost:3000**. By default the UI calls `http://192.168.1.198:1408/api` (see [Remote API + server-side fallbacks](#remote-api--server-side-fallbacks)). For a local API on the same machine, set `apiHost` to `localhost` in `frontend/public/app-config.json` or use the in-app **API server settings** panel.
 
 **API smoke test:**
 
@@ -258,7 +297,8 @@ docker compose -f docker-compose.yml -f docker-compose.build.yml build backend
 | `GOOGLE_GEMINI_API_KEY` | — | Gemini API key (primary) |
 | `GEMINI_API_KEY` | — | Fallback alias |
 | `SA_AQG_USE_STUBS` | `false` | Use stub modules instead of real ML |
-| `CORS_ALLOW_ORIGINS` | `["http://localhost:3000",...]` | FastAPI CORS |
+| `CORS_ALLOW_ORIGINS` | `["http://localhost:3000",...]` | Explicit FastAPI CORS origins |
+| `CORS_ALLOW_ORIGIN_REGEX` | `192.168.*.*` pattern (see `api/config.py`) | LAN UI hosts, e.g. `http://192.168.1.209:3000` |
 
 ---
 
@@ -270,7 +310,7 @@ docker compose -f docker-compose.yml -f docker-compose.build.yml build backend
 | `header too large` on NER load | Run `git lfs pull` for `best_model/` |
 | `GOOGLE_GEMINI_API_KEY not set` | Copy `.env.example` → `.env` and set key |
 | Pipeline still uses stubs | `.env` may set `SA_AQG_USE_STUBS=true` — export `false` explicitly |
-| Slow UI generate | Each question = one full pipeline + Gemini call; use `num_questions` ≤ 3 |
+| UI **Network Error** on Generate | Browser on LAN (`192.168.x.x:3000`) blocked by CORS — restart API after pull; default regex now allows `192.168.*.*`. Check server log for `OPTIONS ... 400`. |
 | Docker build fills C: / daemon EOF | Use `./scripts/docker-bootstrap.sh` instead of full build |
 | WSL catastrophic failure | `wsl --shutdown` in PowerShell, wait 10s, reopen Ubuntu |
 | `sa-aqg-backend:dev` not found | Run `./scripts/docker-bootstrap.sh` first |
@@ -296,16 +336,30 @@ docker compose -f docker-compose.yml -f docker-compose.build.yml build backend
 
 ---
 
+## Git hygiene
+
+`.gitignore` is set up so `git add .` skips secrets, build artifacts, and large data:
+
+- `.env`, `node_modules/`, `frontend/dist/`
+- `data/`, `outputs/`, `models/` (FAISS index)
+- Python caches, logs, LaTeX build files under `docs/`
+
+Tracked: source under `src/`, `api/`, `frontend/src/`, `config/`, `best_model/` (LFS), and docs [`IMPLEMENTATION.md`](IMPLEMENTATION.md), [`Method.md`](Method.md).
+
+---
+
 ## Project Structure
 
 ```
 project-NLP/
 ├── main.py              # CLI
 ├── api/                 # FastAPI (UI backend)
-├── frontend/            # React UI
+├── frontend/            # React UI (+ public/app-config.json)
 ├── src/                 # NLP pipeline
 ├── config/              # YAML settings + prompts
 ├── best_model/          # NER weights (LFS)
-├── models/              # FAISS index
+├── models/              # FAISS index (gitignored)
+├── IMPLEMENTATION.md    # Code & structure reference
+├── Method.md            # System method (short)
 └── IMPLEMENTATION_DETAIL.md
 ```

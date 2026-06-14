@@ -30,10 +30,17 @@ generator:
   temperature: 0.7
   max_output_tokens: 256
   rate_limit_sleep: 4      # Seconds to sleep between Gemini API calls
+  gemini_max_retries_before_grok: 24
   nli_model: "cross-encoder/nli-deberta-v3-small"
   entailment_threshold: 0.75
+  run_nli_check: false     # NLI neutral-dominated; disabled at runtime
   dev_sample_size: 5000    # SQuAD 2.0 dev samples for development
   eval_sample_size: 200    # For NLI hallucination eval
+
+grok:
+  model_name: "grok-2-latest"
+  fallback_enabled: true
+  max_retries: 3
 
 # ── Member C — XAI Evaluator ─────────────────────────────────────────────────
 xai:
@@ -43,14 +50,51 @@ xai:
   alce_eval_size: 100      # Number of questions for ALCE eval
   human_alignment_sample: 30
   cv_contribution_threshold: 0.40  # Expected min CV contribution ratio
+  curator_min_rating: 4    # Min star rating to promote question to corpus
+  curator_min_citation_precision: 0.5
 
 # ── Member D — RAG + Integration ─────────────────────────────────────────────
 rag:
   embedding_model: "sentence-transformers/all-MiniLM-L6-v2"
   vector_store: "faiss"    # Options: faiss | chroma
-  top_k: 1
-  index_path: "models/faiss_index"
-  reference_corpus_path: "data/reference_answers.jsonl"
+  top_k: 1                 # Legacy single-retrieve default
+  default_top_k: 5
+  index_path: "models/faiss_index.active"
+  reference_corpus_path: "data/knowledge_corpus.active.jsonl"
+  staging_corpus_path: "data/knowledge_corpus.staging.jsonl"
+  staging_index_path: "models/faiss_index.staging"
+  esco_skill_map_path: "data/esco_skill_map.json"
+  hybrid_semantic_weight: 0.6
+  hybrid_keyword_weight: 0.4
+  mmr_lambda: 0.7
+  candidate_pool_multiplier: 3
+  feedback_path: "data/feedback.jsonl"
+  corpus_manifest_path: "data/corpus_manifest.json"
+
+# ── Dataset builder (offline crawl) ───────────────────────────────────────────
+crawl:
+  min_interval_seconds: 1.0   # min gap between Stack Exchange API calls
+  max_retries: 6
+  quota_floor: 5              # slow down when quota_remaining <= this
+  page_size: 100
+  checkpoint_every: 10        # write JSONL every N new records
+
+# ── Evaluation (batch + human review) ───────────────────────────────────────
+evaluation:
+  kaggle_dataset: "snehaanbhawal/resume-dataset"
+  it_category: "INFORMATION-TECHNOLOGY"
+  batch_input: "data/eval/it_resumes.jsonl"
+  batch_output: "outputs/eval/batch_records.jsonl"
+  batch_summary: "outputs/eval/batch_summary.json"
+  default_job_description: "Information-Technology software engineering role."
+  shap_nsamples_batch: 50
+  rag_top_k: 5
+  review_output: "data/review_eval.jsonl"
+  review_summary: "outputs/eval/review_summary.json"
+  review_figures_dir: "outputs/eval/figures"
+  holdout_dir: "data/eval/holdout"
+  holdout_ids_path: "data/eval/holdout_cv_ids.json"
+  experiments_tex: "docs/thesis/experiments.tex"
 
 bleu_rouge:
   diversity_ngrams: [1, 2]  # For distinct-1 and distinct-2 computation

@@ -1,0 +1,5 @@
+{
+  "apiHost": "192.168.1.198",
+  "apiPort": 1408,
+  "useRelativeApi": false
+}

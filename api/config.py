@@ -11,7 +11,12 @@ class Settings(BaseSettings):
     GOOGLE_GEMINI_API_KEY: str = ""
     GEMINI_API_KEY: str = ""
     SA_AQG_USE_STUBS: str = "false"
+    REVIEW_MODE: str = "false"
     CORS_ALLOW_ORIGINS: str = '["http://localhost:3000","http://127.0.0.1:3000"]'
+    # Allow LAN dev clients (e.g. http://192.168.1.209:3000) when set; empty disables regex.
+    CORS_ALLOW_ORIGIN_REGEX: str = (
+        r"https?://(localhost|127\.0\.0\.1|192\.168\.\d{1,3}\.\d{1,3})(:\d+)?"
+    )
 
     class Config:
         env_file = ".env"
@@ -40,3 +45,5 @@ elif settings.GOOGLE_GEMINI_API_KEY and not os.environ.get("GEMINI_API_KEY"):
     os.environ["GEMINI_API_KEY"] = settings.GOOGLE_GEMINI_API_KEY
 if settings.SA_AQG_USE_STUBS:
     os.environ["SA_AQG_USE_STUBS"] = settings.SA_AQG_USE_STUBS
+if settings.REVIEW_MODE:
+    os.environ["REVIEW_MODE"] = settings.REVIEW_MODE

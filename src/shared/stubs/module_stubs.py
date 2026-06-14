@@ -13,6 +13,7 @@ from src.shared.contracts.schemas import (
     SkillEntity,
     GeneratorOutput,
     EvaluatorOutput,
+    RetrievalHit,
 )
 
 
@@ -67,6 +68,69 @@ def rag_module_stub(cv_text: str, job_description: str) -> str:
     return _SAMPLE_REFERENCE_ANSWERS[0]
 
 
+_STUB_RECORDS = [
+    {
+        "id": "stub-001",
+        "skill": "Kubernetes",
+        "topic": "Orchestration",
+        "reference_answer": _SAMPLE_REFERENCE_ANSWERS[0],
+        "keywords": ["Kubernetes", "orchestration"],
+        "question": None,
+    },
+    {
+        "id": "stub-002",
+        "skill": "Docker",
+        "topic": "Containerization",
+        "reference_answer": _SAMPLE_REFERENCE_ANSWERS[1],
+        "keywords": ["Docker", "containers"],
+        "question": "How would you containerize a legacy application using Docker?",
+    },
+    {
+        "id": "stub-003",
+        "skill": "CI/CD",
+        "topic": "Automation",
+        "reference_answer": _SAMPLE_REFERENCE_ANSWERS[2],
+        "keywords": ["CI/CD", "pipelines"],
+        "question": None,
+    },
+]
+
+
+def retrieve_candidates_stub(
+    cv_text: str,
+    job_description: str,
+    cv_skills: List[SkillEntity],
+    top_k: int = 5,
+    exclude_ids: List[str] = None,
+) -> List[RetrievalHit]:
+    """Stub for retrieve_candidates returning diverse sample hits."""
+    exclude = set(exclude_ids or [])
+    hits = []
+    for rec in _STUB_RECORDS:
+        if rec["id"] in exclude:
+            continue
+        hits.append(RetrievalHit(
+            corpus_id=rec["id"],
+            record=rec,
+            match_score=0.85 - 0.1 * len(hits),
+            semantic_distance=0.2 + 0.1 * len(hits),
+            question_source="cached" if rec.get("question") else "pending",
+        ))
+        if len(hits) >= top_k:
+            break
+    return hits
+
+
+def personalized_generator_stub(
+    skills: List[SkillEntity],
+    reference_answer: str,
+    cv_text: str = "",
+    job_context: str = "",
+    sample_id: str = "stub_001",
+) -> GeneratorOutput:
+    return generator_module_stub(skills, reference_answer, cv_text, job_context, sample_id)
+
+
 # ── Stub: Member B — Question Generator ──────────────────────────────────────
 
 _SAMPLE_QUESTIONS = [
@@ -115,5 +179,6 @@ def xai_module_stub(
         citation_precision=0.92,
         citation_recall=0.75,
         shap_cv_ratio=0.48,
+        shap_answer_ratio=0.52,
         human_alignment=4.2,
     )

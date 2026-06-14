@@ -6,9 +6,9 @@ export interface GeneratedQuestion {
   explanation: string;
   difficulty: QuestionDifficulty;
   category?: string | null;
+  corpus_id?: string | null;
+  match_score?: number | null;
+  question_source?: string | null;
+  skill?: string | null;
+  topic?: string | null;
 }
-
-
-
-
-

@@ -1,13 +1,14 @@
 from __future__ import annotations
+import json
 import uuid
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from src.shared.contracts.schemas import SkillEntity, GeneratorOutput
 from src.shared.utils.io_utils import (
     get_logger, load_config, load_prompts,
     format_skill_entities_for_prompt, format_skill_names_for_prompt, append_jsonl
 )
-from src.infrastructure.gemini.client import generate_with_retry
+from src.infrastructure.llm.generate import generate_with_fallback
 
 logger = get_logger(__name__)
 
@@ -46,20 +47,59 @@ def _generate_with_gemini(skill_entities: List[SkillEntity], reference_answer: s
         job_context=job_context or "Vai trò kỹ sư phần mềm kỹ thuật",
     )
 
-    # Gọi API thông qua client.py (Đã bao gồm xử lý rate-limit và tự động thử lại)
     logger.debug("Đang gửi request tới API Gemini...")
-    question = generate_with_retry(
+    question, provider = generate_with_fallback(
         prompt=prompt,
         model_name=cfg["model_name"],
         temperature=cfg["temperature"],
-        max_retries=3,
-        base_retry_delay=cfg.get("rate_limit_sleep", 4.0)
+        base_retry_delay=cfg.get("rate_limit_sleep", 4.0),
     )
 
     if not question:
-        raise RuntimeError("Thất bại khi sinh câu hỏi từ API Gemini sau nhiều lần thử lại.")
-        
+        raise RuntimeError("Thất bại khi sinh câu hỏi từ API Gemini/Grok sau nhiều lần thử lại.")
+    if provider == "grok":
+        logger.info("Question generated via Grok fallback.")
     return question
+
+
+def generate_personalized_question(
+    record: Dict[str, Any],
+    skills: List[SkillEntity],
+    cv_text: str = "",
+    job_context: str = "",
+    sample_id: str = None,
+) -> tuple[str, str]:
+    """Generate a CV-personalized question. Returns (question, source)."""
+    prompts = load_prompts()
+    cfg = load_config()["generator"]
+    sid = sample_id or str(uuid.uuid4())[:8]
+
+    skill_dicts = [e.to_dict() if hasattr(e, "to_dict") else e.__dict__ for e in skills]
+    patterns = (record.get("interview_usage") or {}).get("question_patterns") or []
+    patterns_str = "\n".join(f"  - {p}" for p in patterns) if patterns else "  (none)"
+
+    prompt = prompts["personalized_question_from_knowledge"]["user"].format(
+        cv_skills_json=json.dumps(skill_dicts, ensure_ascii=False, indent=2),
+        cv_excerpt=(cv_text[:400] + "...") if len(cv_text) > 400 else cv_text,
+        skill=record.get("skill", ""),
+        topic=record.get("topic", ""),
+        reference_answer=record.get("reference_answer", ""),
+        question_patterns=patterns_str,
+    )
+
+    logger.debug(f"[{sid}] Generating personalized question for {record.get('skill')}/{record.get('topic')}...")
+    question, provider = generate_with_fallback(
+        prompt=prompt,
+        model_name=cfg["model_name"],
+        temperature=cfg["temperature"],
+        base_retry_delay=cfg.get("rate_limit_sleep", 4.0),
+    )
+    if not question:
+        raise RuntimeError("Failed to generate personalized question from Gemini/Grok.")
+    source = "grok" if provider == "grok" else "generated"
+    if provider == "grok":
+        logger.info(f"[{sid}] Question generated via Grok fallback.")
+    return question.strip(), source
 
 
 # ── Kiểm tra ảo giác (Hallucination) bằng NLI ─────────────────────────────────
@@ -131,13 +171,13 @@ def generate_question(
     question = _generate_with_gemini(skills, reference_answer, job_context)
     logger.debug(f"[{sample_id}] Đã sinh xong: {question[:80]}...")
 
-    # 2. Chạy XAI Evaluator (NLI) để kiểm tra ảo giác (hallucination)
-    if run_nli:
+    # 2. Optional NLI check (disabled by default — neutral-dominated on technical Qs)
+    cfg = load_config()["generator"]
+    if run_nli and cfg.get("run_nli_check", False):
         nli_result = check_nli_entailment(reference_answer, question)
         if nli_result["label"] == "CONTRADICTION":
             logger.warning(
-                f"[{sample_id}] NLI=CONTRADICTION (điểm={nli_result['score']:.3f}) — "
-                "Cảnh báo: Phát hiện khả năng có ảo giác (hallucination)."
+                f"[{sample_id}] NLI=CONTRADICTION (score={nli_result['score']:.3f})"
             )
 
     # 3. Đóng gói kết quả chuẩn hóa theo schema

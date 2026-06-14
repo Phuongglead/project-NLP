@@ -22,6 +22,7 @@ answer_aware_question_generation:
     2. The question MUST explicitly mention at least one of the candidate's skills by name: {skill_names}.
     3. The question CANNOT be answered correctly without knowing the reference answer.
     4. The question should be specific, not generic.
+    5. The question should be 1-2 sentences long. Less than 20 words.
 
     Respond with only the question text, no preamble.
 
@@ -32,6 +33,31 @@ rag_retrieval_query:
     Given a candidate's skills: {skill_names}
     And job description focus: {job_description}
     Find the most relevant technical reference answer.
+
+personalized_question_from_knowledge:
+  user: |
+    Generate ONE technical interview question personalized to this candidate.
+
+    Candidate skills (JSON):
+    {cv_skills_json}
+
+    CV context (excerpt):
+    {cv_excerpt}
+
+    Knowledge record:
+    - Skill: {skill}
+    - Topic: {topic}
+    - Reference answer: {reference_answer}
+    - Interview patterns: {question_patterns}
+
+    Rules:
+    1. Mention at least one candidate skill by name.
+    2. Question must require understanding the reference answer.
+    3. Reflect candidate experience from the CV context.
+
+    Respond with only the question text, no preamble.
+
+    Question:
 
 generic_baseline_question:
   user: |

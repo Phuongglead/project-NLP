@@ -89,11 +89,15 @@ def cmd_train_ner(args):
 def cmd_build_index(args):
     """Build RAG FAISS index (Member D)."""
     from src.core.rag_retriever.rag_module import create_sample_corpus, build_faiss_index
-    corpus_path = args.corpus or "data/reference_answers.jsonl"
+    from src.shared.utils.io_utils import load_config
+    cfg = load_config()["rag"]
+    corpus_path = args.corpus or cfg.get("reference_corpus_path", "data/knowledge_corpus.active.jsonl")
+    index_path = args.output or cfg.get("index_path", "models/faiss_index.active")
     if not os.path.exists(corpus_path):
         logger.info("No corpus found — creating sample corpus...")
         create_sample_corpus(corpus_path)
-    build_faiss_index(corpus_path)
+    build_faiss_index(corpus_path, index_path=index_path)
+    print(f"Index built: {index_path}.faiss from {corpus_path}")
 
 
 def cmd_eval_nli(args):
@@ -106,6 +110,174 @@ def cmd_eval_nli(args):
     print("\nNLI Evaluation Summary:")
     for k, v in summary.items():
         print(f"  {k}: {v}")
+
+
+def cmd_eval_download(args):
+    """Download Kaggle IT resumes and export eval JSONL."""
+    import json
+    from pathlib import Path
+
+    from scripts.eval.download_kaggle_resumes import (
+        ROOT,
+        download_dataset,
+        export_it_resumes,
+        _find_resume_csv,
+    )
+    from src.shared.corpus.schema import load_jsonl
+    from src.shared.utils.io_utils import load_config
+
+    cfg = load_config().get("evaluation", {})
+    dataset_slug = cfg.get("kaggle_dataset", "snehaanbhawal/resume-dataset")
+    category = cfg.get("it_category", "Information-Technology")
+    job_desc = cfg.get(
+        "default_job_description",
+        "Information-Technology software engineering role.",
+    )
+    output = args.output or cfg.get("batch_input", "data/eval/it_resumes.jsonl")
+    dataset_dir = ROOT / "data" / "kaggle" / "resume-dataset"
+    output_path = ROOT / output if not os.path.isabs(output) else Path(output)
+
+    if not args.skip_download:
+        csv_path = download_dataset(dataset_slug, dataset_dir)
+    else:
+        csv_path = _find_resume_csv(dataset_dir)
+        if not csv_path:
+            raise FileNotFoundError(f"No CSV in {dataset_dir}")
+
+    n = export_it_resumes(csv_path, output_path, category, job_desc)
+    holdout_path = cfg.get("holdout_ids_path", "data/eval/holdout_cv_ids.json")
+    holdout_file = ROOT / holdout_path if not os.path.isabs(holdout_path) else Path(holdout_path)
+    holdout_file.parent.mkdir(parents=True, exist_ok=True)
+    records = load_jsonl(str(output_path))
+    holdout_ids = [r["cv_id"] for r in records[-3:]] if len(records) >= 3 else []
+    with open(holdout_file, "w", encoding="utf-8") as f:
+        json.dump(
+            {"holdout_cv_ids": holdout_ids, "note": "Use these 3 CVs for human REVIEW_MODE eval"},
+            f,
+            indent=2,
+        )
+    print(f"Exported {n} resumes to {output_path}")
+    print(f"Hold-out CV IDs -> {holdout_file}")
+
+
+def cmd_eval_batch(args):
+    """Run ALCE + SHAP batch evaluation on IT resumes."""
+    import json as _json
+
+    from scripts.eval.run_batch_eval import run_batch_eval
+    from src.shared.corpus.schema import load_jsonl
+    from src.shared.utils.io_utils import load_config
+
+    cfg = load_config().get("evaluation", {})
+    input_path = args.input or cfg.get("batch_input", "data/eval/it_resumes.jsonl")
+    output_path = args.output or cfg.get("batch_output", "outputs/eval/batch_records.jsonl")
+    if not os.path.isabs(input_path):
+        input_path = os.path.join(os.path.dirname(__file__), input_path)
+    if not os.path.isabs(output_path):
+        output_path = os.path.join(os.path.dirname(__file__), output_path)
+
+    n = run_batch_eval(
+        input_path,
+        output_path,
+        n=args.n,
+        shap_nsamples=args.shap_nsamples,
+        rag_top_k=args.rag_top_k,
+        skip_existing=not args.no_skip_existing,
+    )
+    print(f"Processed {n} CVs -> {output_path}")
+
+    if not args.no_aggregate:
+        from scripts.eval.aggregate_batch_report import aggregate
+        from src.shared.corpus.schema import load_jsonl
+        import json as _json
+
+        xai_cfg = load_config().get("xai", {})
+        eval_cfg = load_config().get("evaluation", {})
+        summary_path = eval_cfg.get("batch_summary", "outputs/eval/batch_summary.json")
+        if not os.path.isabs(summary_path):
+            summary_path = os.path.join(os.path.dirname(__file__), summary_path)
+        records = load_jsonl(output_path)
+        summary = aggregate(
+            records,
+            cv_threshold=xai_cfg.get("cv_contribution_threshold", 0.40),
+        )
+        os.makedirs(os.path.dirname(summary_path) or ".", exist_ok=True)
+        with open(summary_path, "w", encoding="utf-8") as f:
+            _json.dump(summary, f, indent=2)
+        print(f"Summary written to {summary_path}")
+
+
+def cmd_eval_aggregate_batch(args):
+    """Aggregate batch eval records into summary JSON."""
+    from scripts.eval.aggregate_batch_report import main as aggregate_main
+
+    argv = ["aggregate_batch_report.py"]
+    if args.input:
+        argv += ["--input", args.input]
+    if args.output:
+        argv += ["--output", args.output]
+    old_argv = sys.argv
+    sys.argv = argv
+    try:
+        aggregate_main()
+    finally:
+        sys.argv = old_argv
+
+
+def cmd_eval_aggregate_review(args):
+    """Aggregate REVIEW_MODE human ratings into summary JSON."""
+    from scripts.eval.aggregate_review_report import main as aggregate_main
+
+    argv = ["aggregate_review_report.py"]
+    if args.input:
+        argv += ["--input", args.input]
+    if args.output:
+        argv += ["--output", args.output]
+    old_argv = sys.argv
+    sys.argv = argv
+    try:
+        aggregate_main()
+    finally:
+        sys.argv = old_argv
+
+
+def cmd_eval_prepare_holdout(args):
+    """Export hold-out CVs as txt + PNG/PDF figures."""
+    from scripts.eval.prepare_holdout_review import prepare_holdout
+
+    manifest = prepare_holdout()
+    for m in manifest:
+        print(f"  {m['cv_id']}: {m['txt_path']}")
+
+
+def cmd_eval_run_holdout_review(args):
+    """Upload hold-out CVs and generate questions via API."""
+    from scripts.eval.run_holdout_review import run_holdout_review
+
+    run_holdout_review(api_base=args.api, num_questions=args.num_questions)
+
+
+def cmd_eval_generate_review_latex(args):
+    """Generate LaTeX human-review table and prose subsection."""
+    from scripts.eval.generate_review_latex import finalize_review_report, generate_review_latex
+
+    if getattr(args, "inject", False):
+        result = finalize_review_report(
+            review_path=args.input,
+            output_dir=args.output_dir,
+            thesis_figures=args.thesis_figures,
+            experiments_path=getattr(args, "experiments_tex", None),
+        )
+        print(f"Injected -> {result['experiments_path']}")
+    else:
+        result = generate_review_latex(
+            review_path=args.input,
+            output_dir=args.output_dir,
+            thesis_figures=args.thesis_figures,
+        )
+    print(f"Prose  -> {result['prose_path']}")
+    print(f"Table  -> {result['table_path']}")
+    print(f"Summary -> {result['summary_path']} (n_ratings={result['n_ratings']})")
 
 
 def cmd_eval_xai(args):
@@ -160,7 +332,8 @@ def main():
 
     # build-index
     p_idx = sub.add_parser("build-index", help="Build FAISS RAG index")
-    p_idx.add_argument("--corpus", default=None, help="Path to reference answers JSONL")
+    p_idx.add_argument("--corpus", default=None, help="Path to knowledge corpus JSONL")
+    p_idx.add_argument("--output", default=None, help="FAISS index base path (without .faiss)")
     p_idx.set_defaults(func=cmd_build_index)
 
     # eval-nli
@@ -176,6 +349,54 @@ def main():
     p_xai.add_argument("--no-shap", action="store_true")
     p_xai.add_argument("--shap-n", type=int, default=50)
     p_xai.set_defaults(func=cmd_eval_xai)
+
+    # eval-download
+    p_edl = sub.add_parser("eval-download", help="Download Kaggle IT resumes for batch eval")
+    p_edl.add_argument("--output", default=None)
+    p_edl.add_argument("--skip-download", action="store_true")
+    p_edl.set_defaults(func=cmd_eval_download)
+
+    # eval-batch
+    p_eb = sub.add_parser("eval-batch", help="Run ALCE+SHAP batch eval on IT resumes")
+    p_eb.add_argument("--input", default=None)
+    p_eb.add_argument("--output", default=None)
+    p_eb.add_argument("--n", type=int, default=None)
+    p_eb.add_argument("--shap-nsamples", type=int, default=None)
+    p_eb.add_argument("--rag-top-k", type=int, default=5)
+    p_eb.add_argument("--no-skip-existing", action="store_true")
+    p_eb.add_argument("--no-aggregate", action="store_true")
+    p_eb.set_defaults(func=cmd_eval_batch)
+
+    # eval-aggregate-batch
+    p_eab = sub.add_parser("eval-aggregate-batch", help="Aggregate batch eval JSONL to summary")
+    p_eab.add_argument("--input", default=None)
+    p_eab.add_argument("--output", default=None)
+    p_eab.set_defaults(func=cmd_eval_aggregate_batch)
+
+    # eval-aggregate-review
+    p_ear = sub.add_parser("eval-aggregate-review", help="Aggregate REVIEW_MODE ratings")
+    p_ear.add_argument("--input", default=None)
+    p_ear.add_argument("--output", default=None)
+    p_ear.set_defaults(func=cmd_eval_aggregate_review)
+
+    # eval-prepare-holdout
+    p_eph = sub.add_parser("eval-prepare-holdout", help="Prepare hold-out CV files and figures")
+    p_eph.set_defaults(func=cmd_eval_prepare_holdout)
+
+    # eval-run-holdout-review
+    p_erh = sub.add_parser("eval-run-holdout-review", help="Run hold-out review via API")
+    p_erh.add_argument("--api", default="http://127.0.0.1:8000")
+    p_erh.add_argument("--num-questions", type=int, default=5)
+    p_erh.set_defaults(func=cmd_eval_run_holdout_review)
+
+    # eval-generate-review-latex
+    p_egl = sub.add_parser("eval-generate-review-latex", help="Generate LaTeX review table")
+    p_egl.add_argument("--input", default=None)
+    p_egl.add_argument("--output-dir", default=None)
+    p_egl.add_argument("--thesis-figures", default="figures")
+    p_egl.add_argument("--inject", action="store_true", help="Insert into experiments.tex")
+    p_egl.add_argument("--experiments-tex", default=None)
+    p_egl.set_defaults(func=cmd_eval_generate_review_latex)
 
     args = parser.parse_args()
     args.func(args)
